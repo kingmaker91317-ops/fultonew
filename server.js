@@ -139,25 +139,16 @@ const server = http.createServer((req, res) => {
           return;
         }
         console.log('[relay] failed: ' + (err ? err.message : 'no upstream'));
-        const expiry = new Date();
-        expiry.setDate(expiry.getDate() + 30);
-
         sendEncoded(res, {
           success: true,
-          status: 'success',
-          license: '1',
-          is_paused: false,
-          is_super_license: false,
+          message: 'Initialized successfully',
           version: '1.0',
-          latest_version: '1.0',
-          min_version: '0.1',
+          min_version: '1.0',
+          status: 'online',
+          is_maintenance: false,
+          maintenance_message: '',
           update_required: false,
-          download_url: DOWNLOAD_LINK,
-          plan: 'MONTH',
-          expiry: expiry.toISOString(),
-          expiry_formatted: fmt(expiry),
-          message: 'Authenticated',
-          app_secret: data.app_secret || ''
+          download_url: ''
         });
       });
     });
