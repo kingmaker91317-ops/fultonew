@@ -4,7 +4,8 @@ const path = require('path');
 
 const PORT = process.env.PORT || 8080;
 const ROOT = __dirname;
-const APP_SECRET = 'fluorite';
+const APP_SECRET = 'bd0978603fb74aa5ac5e0c24d76a206333060cb910c5424e8ce173c9743b0dcd';
+const XOR_KEY = Buffer.from('7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c', 'ascii');
 const MIN_VERSION = '1.85';
 const LATEST_VERSION = '1.85';
 const DOWNLOAD_LINK = 'https://fultonew-2.onrender.com/';
@@ -36,6 +37,22 @@ function fmt(d) {
   return p(d.getDate()) + '.' + p(d.getMonth() + 1) + '.' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
 }
 
+function xorEncode(buf) {
+  const out = Buffer.alloc(buf.length);
+  for (let i = 0; i < buf.length; i++) out[i] = buf[i] ^ XOR_KEY[i % XOR_KEY.length];
+  return out;
+}
+
+function xorDecode(buf) {
+  return xorEncode(buf);
+}
+
+function sendEncoded(res, obj) {
+  const plain = Buffer.from(JSON.stringify(obj), 'utf8');
+  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+  res.end(xorEncode(plain).toString('base64'));
+}
+
 function logReq(rec) {
   try {
     fs.appendFileSync(path.join(ROOT, 'debug.jsonl'), JSON.stringify(rec) + '\n');
@@ -62,29 +79,32 @@ const server = http.createServer((req, res) => {
     req.on('data', function (c) { body += c; });
     req.on('end', function () {
       let data = {};
-      try { data = JSON.parse(body); } catch (e) { console.log('[init] bad body: ' + body); }
+      try { data = JSON.parse(body); } catch (e) { console.log('[init] raw body not json, trying decode'); }
+      if (!data || !data.app_secret) {
+        try {
+          const decoded = JSON.parse(xorDecode(Buffer.from(body, 'base64')).toString('utf8'));
+          data = decoded;
+        } catch (e2) {
+          console.log('[init] decode failed too: ' + e2.message);
+        }
+      }
       console.log('[init] sig: ' + (req.headers['x-emerite-sig'] || 'missing'));
-      console.log('[init] body: ' + body);
-      logReq({ t: new Date().toISOString(), m: req.method, u: urlPath, ip: req.socket.remoteAddress, sig: req.headers['x-emerite-sig'] || '', body: body });
-
-      const key = data.license_key || data.key || '';
-      if (!key) return fail(res, 'key not found.');
+      console.log('[init] decoded body: ' + JSON.stringify(data));
+      logReq({ t: new Date().toISOString(), m: req.method, u: urlPath, ip: req.socket.remoteAddress, sig: req.headers['x-emerite-sig'] || '', body: body, decoded: data });
 
       const expiry = new Date();
       expiry.setDate(expiry.getDate() + 30);
 
-      json(res, {
-        status: 'ok',
-        message: 'Auth Success! Plan: MONTH | Expiry: ' + fmt(expiry),
+      sendEncoded(res, {
+        status: 'success',
+        message: 'Authenticated',
         plan: 'MONTH',
         expiry: expiry.toISOString(),
         expiry_formatted: fmt(expiry),
-        is_banned: false,
-        ban_reason: '',
-        required_min_version: MIN_VERSION,
+        min_version: MIN_VERSION,
         latest_version: LATEST_VERSION,
         download_package_url: DOWNLOAD_LINK,
-        hwid: data.hwid || ''
+        app_secret: data.app_secret || ''
       });
     });
     return;
