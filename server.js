@@ -39,7 +39,7 @@ function fmt(d) {
 const server = http.createServer((req, res) => {
   let urlPath = decodeURIComponent(req.url.split('?')[0]);
 
-  if (urlPath === '/api/v1/software/init' && req.method === 'POST') {
+  if ((urlPath === '/api/v1/software/init' || urlPath === '/api/v1/soft/init') && req.method === 'POST') {
     let body = '';
     req.on('data', function (c) { body += c; });
     req.on('end', function () {
