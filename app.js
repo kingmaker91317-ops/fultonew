@@ -13,10 +13,10 @@
   }
 
   function makeKey() {
-    var salt = localStorage.getItem(LS_SALT) || 'fluorite';
-    var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    var c = function () { return chars.charAt(Math.floor(Math.random() * chars.length)); };
-    return 'FLR-' + c()+c()+c()+c() + '-' + c()+c()+c()+c() + '-' + c()+c()+c()+c();
+    var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    var out = '';
+    for (var i = 0; i < 32; i++) out += chars.charAt(Math.floor(Math.random() * chars.length));
+    return out;
   }
 
   function daysFromToday(n) {
@@ -53,9 +53,9 @@
 
   function seed() {
     var list = [];
-    list.push({ id: uid(), name: 'Demo One', contact: '@demo1', key: 'FLR-ABCD-1234-WXYZ', hwid: '', plan: 'MONTH', status: 'active', note: '', created: new Date().toISOString(), expiry: daysFromToday(24).toISOString(), lastIp: '103.1.2.3', lastSeen: new Date().toISOString() });
-    list.push({ id: uid(), name: 'Demo Two', contact: '', key: 'FLR-QWER-5678-ASDF', hwid: 'sn.arm64.gadget', plan: 'WEEK', status: 'paused', note: 'payment pending', created: new Date().toISOString(), expiry: daysFromToday(5).toISOString(), lastIp: '', lastSeen: '' });
-    list.push({ id: uid(), name: 'Demo Three', contact: '@demo3', key: 'FLR-ZXCV-9012-BNMK', hwid: '', plan: 'LIFETIME', status: 'banned', note: 'cheater report', created: new Date().toISOString(), expiry: daysFromToday(999).toISOString(), lastIp: '88.7.6.5', lastSeen: daysFromToday(-3).toISOString() });
+    list.push({ id: uid(), name: 'Demo One', contact: '@demo1', key: '7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c', hwid: '', plan: 'MONTH', status: 'active', note: '', created: new Date().toISOString(), expiry: daysFromToday(24).toISOString(), lastIp: '103.1.2.3', lastSeen: new Date().toISOString() });
+    list.push({ id: uid(), name: 'Demo Two', contact: '', key: 'AbCdE9fGhJkLmNoPqRsT5uVwXyZ012345', hwid: 'sn.arm64.gadget', plan: 'WEEK', status: 'paused', note: 'payment pending', created: new Date().toISOString(), expiry: daysFromToday(5).toISOString(), lastIp: '', lastSeen: '' });
+    list.push({ id: uid(), name: 'Demo Three', contact: '@demo3', key: 'z9x8c7v6b5n4m3l2k1j0h9g8f7d6s5a4', hwid: '', plan: 'LIFETIME', status: 'banned', note: 'cheater report', created: new Date().toISOString(), expiry: daysFromToday(999).toISOString(), lastIp: '88.7.6.5', lastSeen: daysFromToday(-3).toISOString() });
     return list;
   }
 
