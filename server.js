@@ -36,8 +36,26 @@ function fmt(d) {
   return p(d.getDate()) + '.' + p(d.getMonth() + 1) + '.' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
 }
 
+function logReq(rec) {
+  try {
+    fs.appendFileSync(path.join(ROOT, 'debug.jsonl'), JSON.stringify(rec) + '\n');
+  } catch (e) {}
+}
+
 const server = http.createServer((req, res) => {
   let urlPath = decodeURIComponent(req.url.split('?')[0]);
+
+  if (urlPath === '/debug/last' && req.method === 'GET') {
+    let dump = '';
+    try {
+      const lines = fs.readFileSync(path.join(ROOT, 'debug.jsonl'), 'utf8').trim().split('\n');
+      dump = lines.slice(-30).join('\n');
+    } catch (e) {}
+    fs.appendFileSync(path.join(ROOT, 'debug.jsonl'), JSON.stringify({ t: new Date().toISOString(), m: 'GET', u: '/debug/last', ip: req.socket.remoteAddress }) + '\n');
+    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end(dump || '(no requests captured yet)');
+    return;
+  }
 
   if ((urlPath === '/api/v1/software/init' || urlPath === '/api/v1/soft/init') && req.method === 'POST') {
     let body = '';
@@ -47,6 +65,7 @@ const server = http.createServer((req, res) => {
       try { data = JSON.parse(body); } catch (e) { console.log('[init] bad body: ' + body); }
       console.log('[init] sig: ' + (req.headers['x-emerite-sig'] || 'missing'));
       console.log('[init] body: ' + body);
+      logReq({ t: new Date().toISOString(), m: req.method, u: urlPath, ip: req.socket.remoteAddress, sig: req.headers['x-emerite-sig'] || '', body: body });
 
       const key = data.license_key || data.key || '';
       if (!key) return fail(res, 'key not found.');
