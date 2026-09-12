@@ -1,4 +1,5 @@
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
@@ -47,6 +48,40 @@ function xorDecode(buf) {
   return xorEncode(buf);
 }
 
+function relayToOriginal(body, cb) {
+  const postData = Buffer.from(body, 'utf8');
+  const req = https.request({
+    hostname: 'spacex.emerite.store',
+    path: '/api/v1/software/init',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': postData.length,
+      'X-Emerite-Sig': 'true'
+    }
+  }, function (res) {
+    let data = '';
+    res.on('data', function (c) { data += c; });
+    res.on('end', function () {
+      cb(null, res.statusCode, data);
+    });
+  });
+  req.on('error', function (e) { cb(e); });
+  req.write(postData);
+  req.end();
+}
+
+function tryDecode(s) {
+  let out = '';
+  try {
+    out = xorDecode(Buffer.from(s, 'base64')).toString('utf8');
+    JSON.parse(out);
+  } catch (e) {
+    return null;
+  }
+  return out;
+}
+
 function sendEncoded(res, obj) {
   const plain = Buffer.from(JSON.stringify(obj), 'utf8');
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
@@ -92,25 +127,38 @@ const server = http.createServer((req, res) => {
       console.log('[init] decoded body: ' + JSON.stringify(data));
       logReq({ t: new Date().toISOString(), m: req.method, u: urlPath, ip: req.socket.remoteAddress, sig: req.headers['x-emerite-sig'] || '', body: body, decoded: data });
 
-      const expiry = new Date();
-      expiry.setDate(expiry.getDate() + 30);
+      relayToOriginal(body, function (err, statusCode, upstream) {
+        if (!err && upstream) {
+          const decoded = tryDecode(upstream);
+          console.log('[relay] upstream status: ' + statusCode);
+          console.log('[relay] upstream raw: ' + upstream.slice(0, 400));
+          console.log('[relay] upstream decoded: ' + (decoded || '(not xored json)'));
+          logReq({ t: new Date().toISOString(), m: 'RELAY', u: '/upstream', status: statusCode, body: body, response: upstream, decodedResponse: decoded || '' });
+          res.writeHead(statusCode || 200, { 'Content-Type': 'text/plain; charset=utf-8' });
+          res.end(upstream);
+          return;
+        }
+        console.log('[relay] failed: ' + (err ? err.message : 'no upstream'));
+        const expiry = new Date();
+        expiry.setDate(expiry.getDate() + 30);
 
-      sendEncoded(res, {
-        success: true,
-        status: 'success',
-        license: '1',
-        is_paused: false,
-        is_super_license: false,
-        version: '1.0',
-        latest_version: '1.0',
-        min_version: '0.1',
-        update_required: false,
-        download_url: DOWNLOAD_LINK,
-        plan: 'MONTH',
-        expiry: expiry.toISOString(),
-        expiry_formatted: fmt(expiry),
-        message: 'Authenticated',
-        app_secret: data.app_secret || ''
+        sendEncoded(res, {
+          success: true,
+          status: 'success',
+          license: '1',
+          is_paused: false,
+          is_super_license: false,
+          version: '1.0',
+          latest_version: '1.0',
+          min_version: '0.1',
+          update_required: false,
+          download_url: DOWNLOAD_LINK,
+          plan: 'MONTH',
+          expiry: expiry.toISOString(),
+          expiry_formatted: fmt(expiry),
+          message: 'Authenticated',
+          app_secret: data.app_secret || ''
+        });
       });
     });
     return;
