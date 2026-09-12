@@ -96,14 +96,19 @@ const server = http.createServer((req, res) => {
       expiry.setDate(expiry.getDate() + 30);
 
       sendEncoded(res, {
+        success: true,
         status: 'success',
-        message: 'Authenticated',
+        version: '1.0',
+        latest_version: '1.0',
+        min_version: '0.1',
+        update_required: false,
+        download_url: DOWNLOAD_LINK,
+        is_paused: false,
+        is_super_license: false,
         plan: 'MONTH',
         expiry: expiry.toISOString(),
         expiry_formatted: fmt(expiry),
-        min_version: MIN_VERSION,
-        latest_version: LATEST_VERSION,
-        download_package_url: DOWNLOAD_LINK,
+        message: 'Authenticated',
         app_secret: data.app_secret || ''
       });
     });
